@@ -28,21 +28,24 @@ class SystemInfo(QtCore.QThread):
 
 
 class WeatherHandler(QtCore.QThread):
-    weatherDataReceived = QtCore.Signal(dict)
+    weatherInfoReceived = QtCore.Signal(dict)
 
     def __init__(self, lat, lon, parent=None):
         super().__init__(parent)
-        self.api_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
-        self.delay = 10
-        self.status = True
 
-    def setDelay(self, delay):
-        self.delay = delay
+        self.__api_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
+        self.__delay = 10
+        self.__status = None
+
+    def setDelay(self, delay) -> None:
+        self.__delay = delay
+
+    def setStatus(self, val):
+        self.__status = val
 
     def run(self) -> None:
-
         while self.__status:
-            response = requests.get(self.api_url)
+            response = requests.get(self.__api_url)
             data = response.json()
-            self.weatherDataReceived.emit(data)
-            time.sleep(self.delay)
+            self.weatherInfoReceived.emit(data)
+            time.sleep(self.__delay)

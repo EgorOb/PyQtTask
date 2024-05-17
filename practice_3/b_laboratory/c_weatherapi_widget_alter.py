@@ -12,7 +12,7 @@
 import time
 import requests
 from PySide6 import QtWidgets, QtCore
-from form_weather import Ui_FormWeather
+# from form_weather import Ui_FormWeather
 from a_threads import WeatherHandler
 
 
@@ -130,33 +130,6 @@ class WindowWeather(QtWidgets.QWidget):
         except ValueError:
             self.ui_s.lineEditLongitude.setStyleSheet("background-color: red;")
             self.ui_s.textEditData.setText('<font color="red">Введите корректные координаты</font>')
-
-class WeatherHandler(QtCore.QThread):
-    weatherInfoReceived = QtCore.Signal(dict)
-
-    def __init__(self, lat, lon, parent=None):
-        super().__init__(parent)
-
-        self.__api_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
-        self.__delay = 10
-        self.__status = None
-
-    def setDelay(self, delay) -> None:
-        self.__delay = delay
-
-    def setStatus(self, val):
-        self.__status = val
-
-
-    def run(self) -> None:
-        while self.__status:
-            response = requests.get(self.__api_url)
-            data = response.json()
-            self.weatherInfoReceived.emit(data)
-            time.sleep(self.__delay)
-
-
-
 
 
 if __name__ == "__main__":
