@@ -1,0 +1,9 @@
+pyinstaller --onefile c_weatherapi_widget.py
+
+pyinstaller --onefile launcher.py --noconsole
+
+pyinstaller --onefile launcher.py --hidden-import "c_weatherapi_widget" --noconsole
+
+pyinstaller --onefile launcher.py --hidden-import "c_weatherapi_widget" --name "app" --icon "icon.png" --noconsole
+
+https://pyinstaller.org/en/stable/usage.html#cmdoption-add-data
