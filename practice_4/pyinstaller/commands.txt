@@ -1,3 +1,7 @@
+Для pyinstaller (pip install pyinstaller)
+
+https://pyinstaller.org/en/stable/usage.html#cmdoption-add-data
+
 pyinstaller --onefile c_weatherapi_widget.py
 
 pyinstaller --onefile launcher.py --noconsole
@@ -6,4 +10,12 @@ pyinstaller --onefile launcher.py --hidden-import "c_weatherapi_widget" --nocons
 
 pyinstaller --onefile launcher.py --hidden-import "c_weatherapi_widget" --name "app" --icon "icon.png" --noconsole
 
-https://pyinstaller.org/en/stable/usage.html#cmdoption-add-data
+Для nuitka (pip install nuitka)
+
+https://nuitka.net/user-documentation/user-manual.html
+
+nuitka --standalone --onefile --output-dir=dist main.py
+
+nuitka --standalone --plugin-enable=pyside6 --output-dir=dist main.py
+
+nuitka --standalone --onefile --output-dir=dist --enable-plugin=pyside6 --lto --follow-imports main.py
