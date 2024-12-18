@@ -42,61 +42,69 @@ class Server:
             username = None
 
             while True:
-                data = client_socket.recv(1024).decode()
-                if not data:
+                try:
+                    data = client_socket.recv(1024).decode()
+                    if not data:  # Если соединение закрыто клиентом
+                        break
+
+                    try:
+                        request = json.loads(data)
+                    except json.JSONDecodeError:
+                        client_socket.send(json.dumps({"status": "error", "message": "Invalid JSON format."}).encode())
+                        continue
+
+                    action = request.get("action")
+
+                    if action == "register":
+                        username = request.get("username")
+                        if username in self.clients:
+                            client_socket.send(json.dumps({"status": "error", "message": "Username already taken."}).encode())
+                        else:
+                            self.clients[username] = (client_socket, address)
+                            self.messages[username] = {}
+                            client_socket.send(json.dumps({"status": "success", "message": "Registered successfully."}).encode())
+                            print(f"User registered: {username}")
+
+                    elif action == "login":
+                        username = request.get("username")
+                        if username in self.clients:
+                            client_socket.send(json.dumps({"status": "error", "message": "User already logged in."}).encode())
+                        else:
+                            self.clients[username] = (client_socket, address)
+                            client_socket.send(json.dumps({"status": "success", "message": "Logged in successfully."}).encode())
+                            print(f"User logged in: {username}")
+
+                    elif action == "logout":
+                        if username in self.clients:
+                            del self.clients[username]
+                            print(f"User logged out: {username}")
+                        break
+
+                    elif action == "get_online_users":
+                        online_users = list(self.clients.keys())
+                        client_socket.send(json.dumps({"status": "success", "users": online_users}).encode())
+
+                    elif action == "send_message":
+                        recipient = request.get("recipient")
+                        message = request.get("message")
+                        if recipient in self.clients:
+                            if recipient not in self.messages[username]:
+                                self.messages[username][recipient] = []
+                            self.messages[username][recipient].append(message)
+                            self.clients[recipient][0].send(json.dumps({"action": "receive_message", "from": username, "message": message}).encode())
+                            print(f"Message from {username} to {recipient}: {message}")
+                        else:
+                            client_socket.send(json.dumps({"status": "error", "message": "Recipient not online."}).encode())
+
+                except Exception as e:
+                    print(f"Error while handling client {address}: {e}")
                     break
-
-                request = json.loads(data)
-                action = request.get("action")
-
-                if action == "register":
-                    username = request.get("username")
-                    if username in self.clients:
-                        client_socket.send(json.dumps({"status": "error", "message": "Username already taken."}).encode())
-                    else:
-                        self.clients[username] = (client_socket, address)
-                        self.messages[username] = {}
-                        client_socket.send(json.dumps({"status": "success", "message": "Registered successfully."}).encode())
-                        print(f"User registered: {username}")
-
-                elif action == "login":
-                    username = request.get("username")
-                    if username in self.clients:
-                        client_socket.send(json.dumps({"status": "error", "message": "User already logged in."}).encode())
-                    else:
-                        self.clients[username] = (client_socket, address)
-                        client_socket.send(json.dumps({"status": "success", "message": "Logged in successfully."}).encode())
-                        print(f"User logged in: {username}")
-
-                elif action == "logout":
-                    if username in self.clients:
-                        del self.clients[username]
-                        print(f"User logged out: {username}")
-                    break
-
-                elif action == "get_online_users":
-                    online_users = list(self.clients.keys())
-                    client_socket.send(json.dumps({"status": "success", "users": online_users}).encode())
-
-                elif action == "send_message":
-                    recipient = request.get("recipient")
-                    message = request.get("message")
-                    if recipient in self.clients:
-                        if recipient not in self.messages[username]:
-                            self.messages[username][recipient] = []
-                        self.messages[username][recipient].append(message)
-                        self.clients[recipient][0].send(json.dumps({"action": "receive_message", "from": username, "message": message}).encode())
-                        print(f"Message from {username} to {recipient}: {message}")
-                    else:
-                        client_socket.send(json.dumps({"status": "error", "message": "Recipient not online."}).encode())
-
-        except Exception as e:
-            print(f"Error: {e}")
         finally:
             if username and username in self.clients:
                 del self.clients[username]
                 print(f"User disconnected: {username}")
             client_socket.close()
+
 
 # Client Code
 class ClientApp(QMainWindow):
@@ -228,15 +236,21 @@ class ClientApp(QMainWindow):
     def receive_response(self):
         try:
             data = self.socket.recv(1024).decode()
+            if not data:  # Если сервер закрыл соединение
+                self.chat_history.append("Disconnected from server.")
+                self.socket.close()
+                return {}
             response = json.loads(data)
             if response.get("action") == "receive_message":
                 sender = response.get("from")
                 message = response.get("message")
                 self.show_message_notification(sender, message)
             return response
+        except json.JSONDecodeError:
+            self.chat_history.append("Received invalid JSON.")
         except Exception as e:
             self.chat_history.append(f"Error receiving response: {e}")
-            return {}
+        return {}
 
     def show_message_notification(self, sender, message):
         msg_box = QMessageBox(self)
@@ -249,6 +263,7 @@ class ClientApp(QMainWindow):
             self.send_request({"action": "logout"})
         self.socket.close()
         event.accept()
+
 
 # Run Server and Client
 if __name__ == "__main__":
